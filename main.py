@@ -20,7 +20,8 @@ import logging
 import os
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -36,6 +37,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("club-monitor")
 
+MOSCOW_TZ = ZoneInfo("Europe/Moscow")
+
 HOST_URL = os.environ.get("CLUB_HOST_URL", "").rstrip("/")
 API_KEY = os.environ.get("CLUB_API_KEY", "")
 DB_PATH = os.environ.get("CLUB_DB_PATH", "club_stats.db")
@@ -50,7 +53,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS snapshots (
     id         INTEGER NOT NULL,  -- id места из API
     busy       INTEGER NOT NULL,  -- 1 = занято, 0 = свободно
-    polled_at  TEXT NOT NULL      -- момент опроса, UTC ISO-8601
+    polled_at  TEXT NOT NULL      -- момент опроса, московское время, ISO-8601
 );
 
 CREATE INDEX IF NOT EXISTS idx_snapshots_time ON snapshots(polled_at);
@@ -61,7 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_id_time ON snapshots(id, polled_at);
 CREATE TABLE IF NOT EXISTS current_status (
     id         INTEGER PRIMARY KEY,  -- id места
     busy       INTEGER NOT NULL,
-    updated_at TEXT NOT NULL         -- когда этот статус установился
+    updated_at TEXT NOT NULL         -- когда этот статус установился, московское время
 );
 
 -- Журнал изменений статуса: одна строка = один переход "занято/свободно".
@@ -70,7 +73,7 @@ CREATE TABLE IF NOT EXISTS status_changes (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     seat_id    INTEGER NOT NULL,
     busy       INTEGER NOT NULL,  -- новое состояние после изменения
-    changed_at TEXT NOT NULL
+    changed_at TEXT NOT NULL      -- московское время
 );
 
 CREATE INDEX IF NOT EXISTS idx_status_changes_seat_time ON status_changes(seat_id, changed_at);
@@ -147,7 +150,10 @@ def track_status_change(
 
 
 def poll_once(conn: sqlite3.Connection, current_map: dict) -> None:
-    polled_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    # tzinfo сознательно убираем: SQLite сам переводит время со смещением
+    # (+03:00) обратно в UTC внутри strftime()/date(), что сломало бы всю
+    # аналитику по часам/дням. Храним "наивную" московскую строку.
+    polled_at = datetime.now(MOSCOW_TZ).replace(tzinfo=None).isoformat(timespec="seconds")
     items = fetch_clients()
 
     changes = 0

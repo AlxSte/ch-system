@@ -87,11 +87,16 @@ FROM sessions
 GROUP BY seat_id
 ORDER BY seat_id;
 
--- 8. Место сейчас занято - сколько уже длится текущий сеанс
+-- 8. Место сейчас занято - сколько уже длится текущий сеанс.
+-- Время в таблицах московское (без смещения), а 'now' в SQLite - всегда
+-- UTC, поэтому явно прибавляем 3 часа, чтобы сравнение было корректным.
 SELECT
     id AS seat_id,
     updated_at AS session_start,
-    ROUND((strftime('%s', 'now') - strftime('%s', updated_at)) / 60.0, 1) AS running_minutes
+    ROUND(
+        (strftime('%s', 'now', '+3 hours') - strftime('%s', updated_at)) / 60.0,
+        1
+    ) AS running_minutes
 FROM current_status
 WHERE busy = 1
 ORDER BY running_minutes DESC;

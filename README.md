@@ -13,7 +13,7 @@
 CREATE TABLE snapshots (
     id         INTEGER NOT NULL,  -- id места из API
     busy       INTEGER NOT NULL,  -- 1 = занято, 0 = свободно
-    polled_at  TEXT NOT NULL      -- момент опроса, UTC ISO-8601
+    polled_at  TEXT NOT NULL      -- момент опроса, московское время
 );
 ```
 
@@ -25,7 +25,7 @@ CREATE TABLE snapshots (
 CREATE TABLE current_status (
     id         INTEGER PRIMARY KEY,  -- id места
     busy       INTEGER NOT NULL,
-    updated_at TEXT NOT NULL         -- когда этот статус установился
+    updated_at TEXT NOT NULL         -- когда этот статус установился, московское время
 );
 ```
 
@@ -39,7 +39,7 @@ CREATE TABLE status_changes (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     seat_id    INTEGER NOT NULL,
     busy       INTEGER NOT NULL,  -- новое состояние после изменения
-    changed_at TEXT NOT NULL
+    changed_at TEXT NOT NULL         -- московское время
 );
 ```
 
@@ -52,6 +52,21 @@ CREATE TABLE status_changes (
 
 Если статус не изменился - `status_changes` не растёт, растёт только
 `snapshots` (сырой лог опросов).
+
+## Часовой пояс
+
+Все временные метки (`polled_at`, `updated_at`, `changed_at`) пишутся в
+московском времени (`Europe/Moscow`, сейчас фиксированный UTC+3).
+Хранятся они **без смещения** (`2026-09-10T14:22:25`, а не `...+03:00`)
+намеренно: если оставить смещение, SQLite при вызовах `strftime()`/
+`date()` в аналитике сам переведёт время обратно в UTC, и все запросы по
+часам/дням окажутся сдвинуты на 3 часа.
+
+Если в своём SQL нужно сравнить со временем на сервере СУБД (например,
+`strftime('%s', 'now')`) - помните, что `'now'` в SQLite всегда в UTC,
+поэтому такие сравнения нужно явно сдвигать на 3 часа
+(`strftime('%s', 'now', '+3 hours')`) - пример есть в запросе №8 в
+`analytics_queries.sql`.
 
 ## Установка
 
