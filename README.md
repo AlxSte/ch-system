@@ -68,7 +68,58 @@ CREATE TABLE status_changes (
 (`strftime('%s', 'now', '+3 hours')`) - пример есть в запросе №8 в
 `analytics_queries.sql`.
 
-## Установка
+## Запуск через Docker
+
+Проект уже готов к запуску контейнером — есть `Dockerfile` и
+`docker-compose.yml`. Это удобнее, чем cron: контейнер сам работает в
+демон-режиме (`--interval`) и перезапускается при сбоях/перезагрузке
+сервера.
+
+1. Скопируйте `.env.example` в `.env` и заполните:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   ```
+   CLUB_HOST_URL=https://ваш-хост
+   CLUB_API_KEY=ваш_x-api-key
+   CLUB_INTERVAL=60
+   ```
+
+2. Соберите и запустите:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+3. База данных SQLite сохраняется на хосте в `./data/club_stats.db` —
+   это volume, он переживает пересборку и перезапуск контейнера.
+   `CLUB_DB_PATH` внутри контейнера уже настроен в `Dockerfile`
+   (`/app/data/club_stats.db`) и обычно менять его не нужно.
+
+4. Полезные команды:
+
+   ```bash
+   docker compose logs -f          # логи опросов в реальном времени
+   docker compose restart          # перезапуск (например, после смены .env)
+   docker compose down             # остановить и удалить контейнер (данные в ./data останутся)
+   ```
+
+5. Аналитику при этом можно снимать прямо с файла на хосте, без входа в
+   контейнер:
+
+   ```bash
+   sqlite3 data/club_stats.db < analytics_queries.sql
+   ```
+
+   Либо через контейнер: `docker compose exec club_monitor sqlite3 /app/data/club_stats.db`
+   (если нужно, `sqlite3` можно добавить в образ через `apt-get install -y sqlite3` в `Dockerfile`
+   — в базовом образе его нет, но для запросов с хоста он и не требуется).
+
+## Установка без Docker (venv + cron)
+
+Если Docker не нужен и вы хотите запускать скрипт напрямую на хосте:
 
 ```bash
 cd club_monitor

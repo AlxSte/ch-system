@@ -1,0 +1,14 @@
+services:
+  club_monitor:
+    build: .
+    container_name: club_monitor
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Интервал опроса в секундах. Можно переопределить в .env
+      CLUB_INTERVAL: "${CLUB_INTERVAL:-60}"
+    volumes:
+      # База данных сохраняется на хосте в ./data и переживает
+      # пересборку/перезапуск контейнера
+      - ./data:/app/data
