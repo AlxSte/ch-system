@@ -1,4 +1,4 @@
-club_stats.db
 .env
-venv
-
+club_stats.db
+data/
+clubs.json
