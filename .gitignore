@@ -1,4 +1,10 @@
 .env
+<<<<<<< HEAD
 club_stats.db
 data/
 clubs.json
+=======
+venv
+clubs.json
+
+>>>>>>> d34b3f253d81fe0b6d43dad3ccd376984c30c2ec
