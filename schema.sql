@@ -11,17 +11,6 @@ CREATE TABLE IF NOT EXISTS clubs (
     name TEXT NOT NULL
 );
 
--- Сырой лог: одна строка на каждое место в каждом клубе при каждом опросе
-CREATE TABLE IF NOT EXISTS snapshots (
-    club_id    TEXT NOT NULL REFERENCES clubs(id),
-    id         INTEGER NOT NULL,  -- id места из API этого клуба
-    busy       INTEGER NOT NULL,  -- 1 = занято, 0 = свободно (в Postgres можно BOOLEAN)
-    polled_at  TEXT NOT NULL      -- момент опроса, московское время (в Postgres - TIMESTAMP, не TIMESTAMPTZ)
-);
-
-CREATE INDEX IF NOT EXISTS idx_snapshots_time ON snapshots(polled_at);
-CREATE INDEX IF NOT EXISTS idx_snapshots_club_id_time ON snapshots(club_id, id, polled_at);
-
 -- Текущий (последний известный) статус каждого места в каждом клубе
 CREATE TABLE IF NOT EXISTS current_status (
     club_id    TEXT NOT NULL REFERENCES clubs(id),

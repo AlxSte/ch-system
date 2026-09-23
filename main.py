@@ -108,16 +108,6 @@ CREATE TABLE IF NOT EXISTS clubs (
     name TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS snapshots (
-    club_id    TEXT NOT NULL,
-    id         INTEGER NOT NULL,  -- id места из API этого клуба
-    busy       INTEGER NOT NULL,  -- 1 = занято, 0 = свободно
-    polled_at  TEXT NOT NULL      -- момент опроса, московское время
-);
-
-CREATE INDEX IF NOT EXISTS idx_snapshots_time ON snapshots(polled_at);
-CREATE INDEX IF NOT EXISTS idx_snapshots_club_id_time ON snapshots(club_id, id, polled_at);
-
 -- Текущий (последний известный) статус каждого места в каждом клубе
 CREATE TABLE IF NOT EXISTS current_status (
     club_id    TEXT NOT NULL,
@@ -171,13 +161,6 @@ def fetch_club_safe(club: Club):
         return club, fetch_clients(club), None
     except requests.RequestException as e:
         return club, None, e
-
-
-def insert_snapshot(conn: sqlite3.Connection, club_id: str, item: dict, polled_at: str) -> None:
-    conn.execute(
-        "INSERT INTO snapshots (club_id, id, busy, polled_at) VALUES (?, ?, ?, ?)",
-        (club_id, item["id"], 1 if item.get("busy") else 0, polled_at),
-    )
 
 
 def load_current_status(conn: sqlite3.Connection) -> dict:
@@ -244,8 +227,6 @@ def poll_once(conn: sqlite3.Connection, clubs: list, current_map: dict) -> None:
         for item in items:
             seat_id = item["id"]
             busy = 1 if item.get("busy") else 0
-
-            insert_snapshot(conn, club.id, item, polled_at)
 
             prev_busy = current_map.get((club.id, seat_id))
             track_status_change(conn, current_map, club.id, seat_id, busy, polled_at)
